@@ -1,0 +1,226 @@
+---
+title: "Clustering-Kmeans-Elbow_method-Wine-Dataset"
+author: "Yamileth Hercules"
+date: "2023-06-04"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# 1. The characteristics of six students from the Data Analytics PDD program are given in the table below:
+
+I just put the vectors of very student 
+
+
+## a)Validate your answer 
+```{r}
+# Creating vectors for every students 
+student1<-c(0,1,1,0,0)
+student2<-c(1,1,0,0,0)
+student3<-c(0,0,1,1,1)
+student4<-c(0,1,1,1,1)
+student5<-c(1,0,0,1,1)
+student6<-c(0,1,0,1,0)
+
+```
+
+
+```{r}
+# Creating a matrix by rows with the function rbind
+students<-rbind(student1,student2,student3,student4,student5,student6)
+students
+str(students)
+```
+
+
+```{r}
+#Calling the function class to be sure about the data type that is contain in 'students'
+class(students)
+```
+
+
+
+```{r}
+#Calling the Library and using the function simil with the method 'dice' to get the similarity matrix
+library(proxyC)
+dicedist<-simil(students,method="dice")
+dicedist
+```
+
+
+```{r}
+#Creating dissimilarity matrix to use in the item c).
+dissimilarity <- 1- dicedist
+dissimilarity 
+```
+
+How will you form the two groups?
+
+The two groups are form by put the argument K, in this case is 2. The algorithm will try to join base in the distance matrix calculated with the method 'dice' that we performed in the point (a). and using the PAM algorithm to getr the two clusters. 
+
+
+
+## C) By Using PAM() function in R, divide these 6 students into two relatively homogenenous subgroups (clusters) base on the dissimilarity number calculaters in part (a). How will you form the two groups?
+
+```{r}
+#  Clustering dissimilarity matrix()into two homogeneous groups around the medoids. It is important to notice that first is the dissmilarity matrix, then is the number of clusters(k).
+library(cluster)
+library(factoextra)
+pam.res <- pam(dissimilarity,2)
+print(pam.res)
+?pam
+```
+
+The two groups are students: 
+Subgroup 1 :1,3,4,5,6 
+Subgroup 2: 2
+
+# 2. Write an R user-defined function (of several functions if appropriate) that will suggest a suitable value of k when using the elbow method (based on some creative criteria). This requires you to be creative in coming up with some decision rules on determining how to select the value of k. Your solution is unique and it will be easy to tell if you share your idea with your classmates (you are not supposed to share your idea since this is individual work). Coding is also very personal and it will be easy to spot if you copy your classmates' solution with minor modifications. Your work must be original.
+At a minimum, test your function against at least two datasets - iris dataset and also USArrests dataset (textbook example). If you use additional datasets to validate your solution, please provide links/sources on the datasets.
+
+
+
+```{r}
+suggest_k_elbow <- function(data) {
+  #This function suggests the suitable number of clusters using the elbow method based on the within-cluster sum of squares (WCSS) values.
+  
+  
+  # Function to calculate the within-cluster sum of squares (WCSS) for a given k
+  calculate_tot_withinss <- function(k) {
+    model <- kmeans(data, centers = k, nstart = 25)
+    return(model$tot.withinss)
+  }
+  
+  # Calculate the average within-cluster sum of squares (WCSS) for each value of k
+  k_values <- 1:10
+  tot_withinss <- sapply(k_values, calculate_tot_withinss)
+  
+  # The diff of tot_withins for k=1 and k=2 is the base difference, since it it the greatest diff.
+  base_diff <- tot_withinss[1] - tot_withinss[2]
+  # Upcoming diffs between k must be 20% greater than the base_diff
+  threshold <- 0.2
+
+  # Iterate tot_withins to compute the suitable k value for elbow method
+  for (k in seq_along(tot_withinss)) {
+    # Calculate current difference by evaluating current k and k + 1 tot_withinss
+    current_diff <- tot_withinss[k] - tot_withinss[k+1]
+    
+    # Rules to determine suitable k value:
+    # 1. If current_diff is a negative number then we got a clear bend, and tot_withinss increased for next k value.
+    # 2. OR if current_diff divided by base_diff is less than threshold
+    if (current_diff < 0 | current_diff/base_diff < threshold) {
+      return(k)
+      break
+    }
+  }
+}
+```
+
+
+## Iris dataset
+Testing the data Iris in the `suggest_k_elbow` function
+
+```{r}
+# Data set to use is iris  to test the function `suggest_k_elbow`
+data(iris)
+#Scaling the data set
+df<- scale(iris[,1:4])
+library(factoextra)
+
+#Creating the model of K means clustering 
+result<- kmeans(df,3,nstart = 25)
+#Creatin el elbow graphs for k_means
+fviz_nbclust(df,kmeans, method='wss')
+```
+
+```{r}
+#K suitable for iris data set  
+suggest_k_elbow(df)
+```
+
+
+# USArrests dataset
+
+Testing the data USArrests in the `suggest_k_elbow` function
+
+```{r}
+# Data set to use is USArrest to test the function `suggest_k_elbow`
+data("USArrests")      # Load the data set
+df1 <- scale(USArrests) # Scale the data
+#Creating the model of K means clustering 
+result1<- kmeans(df1,3,nstart = 25)
+#Creatin el elbow graphs for k_means
+fviz_nbclust(df1,kmeans, method='wss')
+
+```
+
+```{r}
+#K suitable for USArrests data set
+suggest_k_elbow(df1)
+```
+## Creating Another dataset
+
+```{r}
+#Function for crearing 
+make_blob<-function(n, mean,sd){
+  x<-rnorm(n,mean[1],sd[1])
+  y<-rnorm(n,mean[2],sd[2])
+  cbind(x,y)
+}
+```
+
+
+```{r}
+#Creating the objects of cluster data with the function
+blob1<-make_blob(100,c(15,8),c(5/4,4/4))
+blob2<-make_blob(100,c(0,16),c(8/4,4/4))
+blob3<-make_blob(100,c(-15,0),c(4/4,6/4))
+blob4<-make_blob(100,c(0,2),c(2/4,2/4))
+blob5<-make_blob(90,c(0,-12),c(4/4,4/4))
+blob6<-make_blob(100,c(15,-5),c(4/4,4/4))
+```
+
+
+```{r}
+mydataset_blob<-rbind(blob1,blob2,blob3,blob4,blob5,blob6)#make in different color to get more marks
+
+# Define a vector of colors
+colors <- c("#FF0000", "#00FF00", "#0000FF", "#FF00FF", "#00FFFF", "#FFFF00")
+
+```
+
+```{r}
+# Plot the data with different colors for each blob
+plot(mydataset_blob, col = colors)
+
+# Add a legend for the colors
+legend("topright", legend = c("Blob1", "Blob2", "Blob3","Blob4", "Blob5", "Blob6"), fill = colors)
+
+```
+## Testing the new dataset with `suggest_k_elbow` function
+
+```{r}
+#K suitable for make_blob data set
+df2<- scale(mydataset_blob)
+suggest_k_elbow(df2)
+```
+
+
+```{r}
+result2.res<- kmeans(df2,6,nstart = 25)
+fviz_nbclust(df2,kmeans, method='wss')
+
+```
+
+```{r}
+# Creating the cluster graph of the data `mydataset_blob` with colors
+library(factoextra)
+library(cluster)
+library(ggplot2)
+fviz_cluster(result2.res, data = df2, ellipse.type = "euclid", star.plot = TRUE,  #repel = TRUE, # Avoid label overplotting (slow)
+ggtheme = theme_minimal()
+)
+```
+             
+
+
